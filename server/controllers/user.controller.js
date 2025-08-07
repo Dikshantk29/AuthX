@@ -5,6 +5,8 @@ import transport from "../config/nodemailer.js";
 import dotenv from "dotenv";
 dotenv.config();
 
+
+//register controller
 export const register = async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -71,6 +73,8 @@ export const register = async (req, res) => {
   }
 };
 
+
+//login controller
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -116,6 +120,8 @@ export const login = async (req, res) => {
   }
 };
 
+
+//logout controller
 export const logout = async (req, res) => {
   try {
     // Perform any necessary cleanup or logging
