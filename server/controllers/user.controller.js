@@ -5,7 +5,6 @@ import transport from "../config/nodemailer.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-
 //register controller
 export const register = async (req, res) => {
   const { name, email, password } = req.body;
@@ -73,7 +72,6 @@ export const register = async (req, res) => {
   }
 };
 
-
 //login controller
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -120,7 +118,6 @@ export const login = async (req, res) => {
   }
 };
 
-
 //logout controller
 export const logout = async (req, res) => {
   try {
@@ -139,3 +136,191 @@ export const logout = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+//send verification OTP to user email
+export const sendVerifyOtp = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Find the user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.isAccountVerified) {
+      return res.status(400).json({ message: "Account already verified" });
+    }
+
+    // Generate OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit OTP
+    user.verifyOtp = otp;
+    user.verifyOtpExpireAt = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
+    await user.save();
+
+    // Send OTP email
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: user.email,
+      subject: "Email Verification OTP",
+      text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
+    };
+
+    // Send the email
+    try {
+      await transport.sendMail(mailOptions);
+    } catch (emailError) {
+      console.error("Error sending email:", emailError);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//verify user email using OTP
+export const verifyEmail = async (req, res) => {
+  const { userId, otp } = req.body;
+  if (!userId || !otp) {
+    return res.status(400).json({ message: "User ID and OTP are required" });
+  }
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.isAccountVerified) {
+      return res.status(400).json({ message: "Account already verified" });
+    }
+
+    // Check if OTP is valid
+    if (user.verifyOtp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Check if OTP is expired
+    if (Date.now() > user.verifyOtpExpireAt) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    // Mark the user as verified
+    user.isAccountVerified = true;
+    user.verifyOtp = "";
+    user.verifyOtpExpireAt = 0;
+    await user.save();
+
+    return res.status(200).json({ message: "Email verified successfully" });
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//check if user is authenticated
+export const isAuthenticated = (req, res) => {
+  try {
+    return res
+      .status(200)
+      .json({ success: true, message: "User is authenticated" });
+  } catch (error) {
+    console.error("Error checking authentication:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//send reset password OTP
+export const sendResetOtp = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    // Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit OTP
+    user.resetOtp = otp;
+    user.resetOtpExpireAt = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
+    await user.save();
+
+    // Send OTP email
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: user.email,
+      subject: "Password Reset OTP",
+      text: `Your OTP for password reset is ${otp}. It is valid for 10 minutes.`,
+    };
+
+    // Send the email
+    try {
+      await transport.sendMail(mailOptions);
+    } catch (emailError) {
+      console.error("Error sending email:", emailError);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
+    });
+  } catch (error) {
+    console.error("Error sending reset OTP:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//reset user password
+export const resetPassword = async (req, res) => {
+  const { email, newPassword, otp } = req.body;
+  if (!email || !newPassword || !otp) {
+    return res
+      .status(400)
+      .json({ message: "Email, new password, and OTP are required" });
+  }
+
+  try {
+    // Find the user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if OTP is valid
+    if (user.resetOtp !== otp || user.resetOtp === "") {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Check if OTP is expired
+    if (Date.now() > user.resetOtpExpireAt) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    // Update the user's password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.resetOtp = "";
+    user.resetOtpExpireAt = 0;
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
