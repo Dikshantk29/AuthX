@@ -1,6 +1,9 @@
-import React from "react";
+import React,{ useContext } from "react";
 import { assets } from "../assets/assets";
+import { AppContext } from "../context/AppContext.jsx";
 const Header = () => {
+
+  const {userData} = useContext(AppContext);
   return (
     <div className="flex flex-col items-center m-20 px-4 text-center text-gray-800 ">
       <img
@@ -10,7 +13,7 @@ const Header = () => {
         className="w-26 h-36 rounded-full mb-6"
       />
       <h1 className="text-xl  flex items-center gap-2 sm:text-3xl font-medium mb-2">
-        Hey Developer
+        Hey {userData ?.name || "Developer"}
       </h1>
       <img
         src={assets.hand_wave}

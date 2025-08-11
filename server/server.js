@@ -11,11 +11,15 @@ const app = express();
 const port = process.env.PORT || 4000;
 //database connection
 connectDB();
+const allowOrigins = ["http://localhost:5173"];
 
 //middleware
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ credentials: true }));
+app.use(cors({ 
+  credentials: true,
+  origin: allowOrigins
+}));
 
 //api endpoints
 app.get("/", (req, res) => {res.send("Welcome to the Authentication App!");});
