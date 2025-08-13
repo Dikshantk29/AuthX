@@ -31,9 +31,7 @@ export const AppContextProvider = (props) => {
     }
   };
 
-  useEffect(() => {
-    getAuthState();
-  }, []);
+ 
 
   const getUserData = async () => {
     try {
