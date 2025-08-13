@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import transport from "../config/nodemailer.js";
 import dotenv from "dotenv";
 dotenv.config();
+import { EMAIL_VERIFY_TEMPLATE, PASSWORD_RESET_TEMPLATE } from "../config/emailTemplate.js";
 
 //register controller
 export const register = async (req, res) => {
@@ -165,7 +166,8 @@ export const sendVerifyOtp = async (req, res) => {
       from: process.env.SENDER_EMAIL,
       to: user.email,
       subject: "Email Verification OTP",
-      text: `Your OTP is ${otp}. It is valid for 10 minutes.`,
+      html: EMAIL_VERIFY_TEMPLATE.replace("{{otp}}", otp),
+
     };
 
     // Send the email
@@ -262,7 +264,7 @@ export const sendResetOtp = async (req, res) => {
       from: process.env.SENDER_EMAIL,
       to: user.email,
       subject: "Password Reset OTP",
-      text: `Your OTP for password reset is ${otp}. It is valid for 10 minutes.`,
+      html: PASSWORD_RESET_TEMPLATE.replace("{{otp}}", otp),
     };
 
     // Send the email
